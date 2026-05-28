@@ -1,0 +1,26 @@
+# dependencies
+**/node_modules/
+**/bower_components/
+
+# Python environment & cache
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+**/.venv/
+**/venv/
+**/env/
+**/.env
+
+# build files
+**/dist/
+**/build/
+**/.next/
+
+# IDE files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

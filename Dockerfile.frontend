@@ -1,0 +1,18 @@
+# Dockerfile para el frontend de Guayabera ERP v2
+FROM node:18-alpine
+
+# Establecer directorio de trabajo
+WORKDIR /app
+
+# Copiar package.json/package-lock e instalar dependencias
+COPY frontend/package*.json ./
+RUN npm ci
+
+# Copiar el código de la aplicación
+COPY frontend/ ./
+
+# Exponer el puerto
+EXPOSE 3000
+
+# Comando para ejecutar la aplicación
+CMD ["npm", "start"]

@@ -1,0 +1,95 @@
+services:
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: guayabera-erp-v2-db
+    environment:
+      POSTGRES_DB: guayabera_erp_v2
+      POSTGRES_USER: guayabera_user
+      POSTGRES_PASSWORD: guayabera_pass_2025
+    ports:
+      - "5435:5432"  # Puerto diferente al de la versión 1
+    volumes:
+      - postgres_data_v2:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d  # Directorio para scripts de inicialización
+    networks:
+      - guayabera-v2-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U guayabera_user -d guayabera_erp_v2"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis para caché y colas
+  redis:
+    image: redis:7-alpine
+    container_name: guayabera-erp-v2-redis
+    ports:
+      - "6381:6379"  # Puerto diferente al de la versión 1
+    volumes:
+      - redis_data_v2:/data
+    networks:
+      - guayabera-v2-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend FastAPI
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: guayabera-erp-v2-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://guayabera_user:guayabera_pass_2025@postgres:5432/guayabera_erp_v2
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=guayabera_erp_v2
+      - POSTGRES_USER=guayabera_user
+      - POSTGRES_PASSWORD=guayabera_pass_2025
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - SECRET_KEY=esta_es_una_clave_secreta_para_pruebas_v2
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - guayabera-v2-network
+    volumes:
+      - ./backend:/app
+
+  # Frontend React
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: guayabera-erp-v2-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api/v1
+      - PORT=3000
+    depends_on:
+      - backend
+    networks:
+      - guayabera-v2-network
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data_v2:
+  redis_data_v2:
+
+networks:
+  guayabera-v2-network:
+    driver: bridge
