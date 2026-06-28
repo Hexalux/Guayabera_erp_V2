@@ -1,6 +1,7 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, tenants, users, operaciones_filiales, licencias, admin, tenant_portal, contabilidad, terceros, cxc
+from app.api.v1.endpoints import auth, tenants, users, operaciones_filiales, licencias, admin, tenant_portal, contabilidad, terceros, cxc, cxp, gastos, revaluacion
 from app.api.v1.endpoints.tesoreria import caja
+from app.api.v1.endpoints.finanzas import banco
 
 api_router = APIRouter()
 
@@ -36,3 +37,15 @@ api_router.include_router(cxc.router, prefix="/cxc", tags=["cxc"])
 
 # Rutas de tesorería - Caja (Sprint 5 - Implementado)
 api_router.include_router(caja.router, prefix="/tesoreria", tags=["tesorería"])
+
+# Rutas de Cuentas por Pagar (Sprint 4 - Implementado)
+api_router.include_router(cxp.router, prefix="/cxp", tags=["cxp"])
+
+# Rutas de Control de Gastos (Sprint 7 - Implementado)
+api_router.include_router(gastos.router, prefix="/gastos", tags=["gastos"])
+
+# Rutas de Revaluación Cambiaria (Sprint 8 - Implementado)
+api_router.include_router(revaluacion.router, prefix="/revaluacion", tags=["revaluacion"])
+
+# Rutas de Bancos (Sprint 6 - Implementado)
+api_router.include_router(banco.router, prefix="/bancos", tags=["bancos"])
