@@ -1,5 +1,6 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, tenants, users, operaciones_filiales, licencias, admin, tenant_portal
+from app.api.v1.endpoints import auth, tenants, users, operaciones_filiales, licencias, admin, tenant_portal, contabilidad, terceros, cxc
+from app.api.v1.endpoints.tesoreria import caja
 
 api_router = APIRouter()
 
@@ -23,3 +24,15 @@ api_router.include_router(licencias.router, prefix="/licencias", tags=["licencia
 
 # Rutas operativas del tenant autenticado
 api_router.include_router(tenant_portal.router, prefix="/tenant-portal", tags=["tenant-portal"])
+
+# Rutas de contabilidad (Sprint 1 - Implementado)
+api_router.include_router(contabilidad.router, prefix="/contabilidad", tags=["contabilidad"])
+
+# Rutas de terceros (Sprint 2 - Implementado)
+api_router.include_router(terceros.router, prefix="/terceros", tags=["terceros"])
+
+# Rutas de Cuentas por Cobrar (Sprint 3 - Implementado)
+api_router.include_router(cxc.router, prefix="/cxc", tags=["cxc"])
+
+# Rutas de tesorería - Caja (Sprint 5 - Implementado)
+api_router.include_router(caja.router, prefix="/tesoreria", tags=["tesorería"])

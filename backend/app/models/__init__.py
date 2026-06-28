@@ -5,6 +5,26 @@ from app.models.tenant import Tenant, GrupoCorporativo
 from app.models.admin import Admin
 from app.models.licencia import Licencia, TipoLicencia
 from app.models.token import TokenVerificacion
+from app.models.contabilidad import (
+    CuentaContable,
+    CentroCosto,
+    PeriodoContable,
+    AsientoContable,
+    MovimientoAsiento,
+    TipoCuenta,
+    NaturalezaCuenta
+)
+# Modelos de tesorería - Caja (Sprint 5)
+from app.models.tesoreria.caja import (
+    Caja,
+    ReciboCaja,
+    LiquidacionSucursal,
+    LiquidacionVendedor,
+    RecepcionValores,
+    ArqueoCaja,
+    CorteCaja,
+    TipoMovimientoCaja
+)
 
 __all__ = [
     "Usuario", 
@@ -13,5 +33,22 @@ __all__ = [
     "GrupoCorporativo", 
     "Licencia", 
     "TipoLicencia", 
-    "TokenVerificacion"
+    "TokenVerificacion",
+    # Modelos de contabilidad
+    "CuentaContable",
+    "CentroCosto",
+    "PeriodoContable",
+    "AsientoContable",
+    "MovimientoAsiento",
+    "TipoCuenta",
+    "NaturalezaCuenta",
+    # Modelos de tesorería - Caja
+    "Caja",
+    "ReciboCaja",
+    "LiquidacionSucursal",
+    "LiquidacionVendedor",
+    "RecepcionValores",
+    "ArqueoCaja",
+    "CorteCaja",
+    "TipoMovimientoCaja"
 ]

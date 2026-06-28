@@ -42,6 +42,53 @@ from app.models.tenant import Tenant  # noqa: F401
 from app.models.admin import Admin  # noqa: F401
 from app.models.licencia import Licencia, TipoLicencia  # noqa: F401
 from app.models.token import TokenVerificacion  # noqa: F401
+from app.models.contabilidad import (  # noqa: F401
+    CuentaContable,
+    CentroCosto,
+    PeriodoContable,
+    AsientoContable,
+    MovimientoAsiento
+)
+# Sprint 2: Terceros Unificados
+from app.models.terceros import (  # noqa: F401
+    Tercero,
+    TerceroDireccion,
+    TerceroContacto,
+    TerceroCuentaBancaria,
+    TerceroDocumento
+)
+# Sprint 3: Cuentas por Cobrar
+from app.models.cxc import (  # noqa: F401
+    CXCDocumento,
+    CXCMovimiento,
+    CXCCobro,
+    CXCCobroDetalle,
+    CXCRelacionCobranza,
+    CXCAnticipo,
+    CXCAnticipoAplicacion,
+    CXCInteresMoratorio
+)
+# Modelos de tesorería - Caja (Sprint 5)
+from app.models.tesoreria.caja import (  # noqa: F401
+    Caja,
+    ReciboCaja,
+    LiquidacionSucursal,
+    LiquidacionVendedor,
+    RecepcionValores,
+    ArqueoCaja,
+    CorteCaja,
+    TipoMovimientoCaja
+)
+# Modelos de tesorería - Bancos (Sprint 6, implementado anticipadamente)
+from app.models.tesoreria.bancos import (  # noqa: F401
+    Banco,
+    CuentaBancaria,
+    MovimientoBancario,
+    ChequeEmitido,
+    ChequeRebotado,
+    ConciliacionBancaria,
+    SolicitudCheque
+)
 
 
 async def init_db():
