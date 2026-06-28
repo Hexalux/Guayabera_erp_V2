@@ -266,7 +266,7 @@ const Dashboard: React.FC = () => {
           requestForm.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={requestForm} layout="vertical" onFinish={handleRequestLicense}>
           <Form.Item

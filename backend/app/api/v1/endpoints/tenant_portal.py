@@ -109,9 +109,9 @@ async def obtener_resumen_tenant(
     usuarios = usuarios_result.scalars().all()
 
     empresas = []
-    if tenant.es_grupo_corporativo:
+    if getattr(tenant, "es_grupo_corporativo", False) and hasattr(Tenant, "grupo_corporativo_id"):
         filiales_result = await db.execute(
-            select(Tenant).where(cast(Tenant.grupo_corporativo_id, String) == str(tenant.id))
+            select(Tenant).where(cast(getattr(Tenant, "grupo_corporativo_id"), String) == str(tenant.id))
         )
         empresas = filiales_result.scalars().all()
 
@@ -121,10 +121,10 @@ async def obtener_resumen_tenant(
             "name": tenant.name,
             "subdomain": tenant.subdomain,
             "contact_email": tenant.contact_email,
-            "contact_phone": tenant.contact_phone,
+            "contact_phone": getattr(tenant, "contact_phone", None),
             "descripcion": tenant.descripcion,
-            "is_active": tenant.is_active,
-            "es_grupo_corporativo": tenant.es_grupo_corporativo,
+            "is_active": getattr(tenant, "is_active", True),
+            "es_grupo_corporativo": getattr(tenant, "es_grupo_corporativo", False),
         },
         "current_user": {
             "id": current_user.id,
@@ -151,16 +151,16 @@ async def obtener_resumen_tenant(
                 "name": empresa.name,
                 "subdomain": empresa.subdomain,
                 "contact_email": empresa.contact_email,
-                "contact_phone": empresa.contact_phone,
+                "contact_phone": getattr(empresa, "contact_phone", None),
                 "descripcion": empresa.descripcion,
-                "is_active": empresa.is_active,
+                "is_active": getattr(empresa, "is_active", True),
             }
             for empresa in empresas
         ],
         "modulos": [
             {"key": "licencias", "nombre": "Licencias", "habilitado": True},
             {"key": "usuarios", "nombre": "Usuarios", "habilitado": True},
-            {"key": "empresas", "nombre": "Empresas", "habilitado": tenant.es_grupo_corporativo},
+            {"key": "empresas", "nombre": "Empresas", "habilitado": getattr(tenant, "es_grupo_corporativo", False)},
             {"key": "rh", "nombre": "Recursos Humanos", "habilitado": False},
         ],
     }

@@ -66,7 +66,26 @@ Este documento resume los principales desarrollos realizados en la versión 2.0 
 - **Control de Acceso**: Verificación de que los usuarios solo accedan a recursos del tenant correspondiente
 - **Validación de Operaciones**: Control de que las operaciones entre filiales solo se realicen entre empresas del mismo grupo
 
-### 9. Estructura de Proyecto
+### 10. Core Financiero y Motor Contable (TutConta)
+
+- **Catálogo SAT Automatizado**: Siembra automática del Catálogo de Cuentas estándar del SAT para nuevos tenants.
+- **Transacciones ACID Inquebrantables**: Implementación de bloques transaccionales (`db.begin()` -> `db.commit()`) para asegurar el cuadre perfecto del Libro Mayor con el inventario físico.
+- **Bloqueos Deterministas (Pessimistic Locking)**: Uso de `SELECT ... FOR UPDATE` en movimientos de inventario y órdenes de producción para evitar *Race Conditions* y descuadres de existencias.
+- **Integración de AI TutConta**: Implementación del Agente Experto TutConta para auditoría estructural y validación financiera, garantizando la partida doble.
+
+### 11. Módulo de Ventas y Cadena de Suministro (POS)
+
+- **Punto de Venta (POS)**: Panel interactivo (estética MATS Green Energy) para cajeros, permitiendo selección visual de lotes, cálculo de IVA y totales.
+- **Integración Transaccional**: El POS descuenta el inventario y detona automáticamente dos pólizas en el motor contable (Póliza de Ingresos y Póliza de Costo de Ventas).
+- **Múltiples Métodos de Pago**: Soporte para Efectivo, Tarjeta y Transferencia (impactando diferentes cuentas de caja/bancos).
+- **Visor de Trazabilidad 360°**: Módulo interactivo con línea de tiempo que certifica y audita el ciclo de vida completo de un lote desde el ingreso de materia prima hasta su capitalización contable.
+
+### 12. Cadena de Abastecimiento (Compras y CxP)
+
+- **Gestión de Proveedores y Órdenes**: Flujo completo B2B para solicitar insumos y registrarlos al sistema con control de fechas y montos.
+- **Transacción de Recepción Automatizada**: Al recibir mercancía, el sistema inyecta inventario con `Pessimistic Locking`, crea la Cuenta por Pagar (CxP) calculando los días de crédito, y detona la Póliza de Provisión de Compra (Cargo a Inventario, Abono a Proveedores).
+
+## Estructura de Proyecto
 
 - **Organización Modular**: Estructura de directorios claramente definida para facilitar el mantenimiento
 - **Documentación**: Documentación completa sobre la arquitectura multitenant y las operaciones entre filiales

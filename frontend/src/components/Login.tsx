@@ -21,19 +21,7 @@ const Login: React.FC = () => {
       message.success('Inicio de sesión exitoso');
       navigate(getDashboardPath(result.user), { replace: true });
     } catch (error: any) {
-      const errorMessage = error?.message || error || 'Error en el inicio de sesión';
-
-      if (error?.status === 404 || error?.code === 'EMAIL_NOT_FOUND') {
-        dispatch(clearError());
-        message.info('Correo no registrado. Crea una cuenta para continuar.');
-        navigate('/register', {
-          replace: true,
-          state: { email: values.username },
-        });
-        return;
-      }
-
-      message.error(errorMessage);
+      message.error('Por favor revise el usuario o contraseña');
     } finally {
       setLoading(false);
     }

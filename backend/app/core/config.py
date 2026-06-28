@@ -1,6 +1,9 @@
 from pydantic_settings import BaseSettings
 from typing import List, Union
+from dotenv import load_dotenv
 import os
+
+load_dotenv()
 
 
 class Settings(BaseSettings):
@@ -9,13 +12,16 @@ class Settings(BaseSettings):
     
     # Database settings
     POSTGRES_HOST: str = os.getenv("POSTGRES_HOST", "localhost")
-    POSTGRES_PORT: int = os.getenv("POSTGRES_PORT", 5435)  # Puerto diferente al de la versión 1
+    POSTGRES_PORT: int = int(os.getenv("POSTGRES_PORT", 5436))  # Puerto diferente al de la versión 1
     POSTGRES_DB: str = os.getenv("POSTGRES_DB", "guayabera_erp_v2")
     POSTGRES_USER: str = os.getenv("POSTGRES_USER", "guayabera_user")
     POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "guayabera_pass_2025")
     
     # Construcción de la URL de la base de datos
-    DATABASE_URL: str = f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    DATABASE_URL: str = os.getenv(
+        "DATABASE_URL", 
+        f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    )
     
     # Configuración de seguridad
     SECRET_KEY: str = os.getenv("SECRET_KEY", "tu_clave_secreta_aqui")
@@ -25,8 +31,12 @@ class Settings(BaseSettings):
     # Configuración de backend CORS
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",  # Frontend
+        "http://localhost:3001",  # Frontend alternativo
+        "http://localhost:3002",
         "http://localhost:8001",  # Backend
         "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:3002",
         "http://127.0.0.1:8001"
     ]
     
@@ -40,4 +50,5 @@ class Settings(BaseSettings):
     TENANT_IDENTIFICATION_HEADER: str = "X-Tenant-ID"
 
 
+# Reload trigger
 settings = Settings()

@@ -111,7 +111,7 @@ const UsersList: React.FC = () => {
         }}
         okText="Guardar"
         cancelText="Cancelar"
-        destroyOnClose
+        destroyOnHidden
       >
         <AntdForm layout="vertical" form={form} name="tenant_user_form">
           <AntdForm.Item

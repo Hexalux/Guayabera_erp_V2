@@ -1,11 +1,13 @@
 import asyncio
 from sqlalchemy import text
-from app.core.database import async_session_maker
+from app.core.database import async_session_maker, init_db
 from app.models.admin import Admin
 from sqlalchemy import select
 
 async def test_db():
     try:
+        print("Initializing DB...")
+        await init_db()
         async with async_session_maker() as session:
             # Test simple query
             await session.execute(text("SELECT 1"))

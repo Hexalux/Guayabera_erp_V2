@@ -155,7 +155,7 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
             Licencia.fecha_fin > datetime.utcnow()
         )
         licencia_result = await db.execute(stmt)
-        licencia_activa = licencia_result.scalar_one_or_none()
+        licencia_activa = licencia_result.scalars().first()
         
         if not licencia_activa:
             raise HTTPException(
@@ -171,7 +171,43 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
     )
     
     return {"access_token": access_token, "token_type": "bearer", "user": public_user}
+def generar_token_unico(longitud: int = 32) -> str:
+    """Genera un token único seguro"""
+    return ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(longitud))
 
+
+def enviar_correo(destinatario: str, asunto: str, cuerpo: str):
+    """Función para enviar correos electrónicos (simulación)"""
+    # Aquí iría la lógica real para enviar correos
+    # Por ahora solo imprimimos para simular
+    print(f"Correo enviado a: {destinatario}")
+    print(f"Asunto: {asunto}")
+    print(f"Cuerpo: {cuerpo}")
+
+
+@router.post("/solicitar-registro")
+async def solicitar_registro(
+    solicitud: SolicitudRegistro,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Endpoint para solicitar registro de nuevo usuario.
+    Se envía un correo con un enlace de verificación.
+    """
+    # Verificar si el email ya existe
+    stmt = select(Usuario).where(Usuario.email == solicitud.email)
+    result = await db.execute(stmt)
+    existing_user = result.scalar_one_or_none()
+    
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El email ya está registrado"
+        )
+    
+    # Generar token de verificación
+    token_verificacion = generar_token_unico()
+    expiracion = datetime.utcnow() + timedelta(hours=24)  # El enlace expira en 24 horas
 
 def generar_token_unico(longitud: int = 32) -> str:
     """Genera un token único seguro"""
@@ -224,6 +260,10 @@ async def solicitar_registro(
     db.add(nuevo_tenant)
     await db.commit()
     await db.refresh(nuevo_tenant)
+    
+    # Sembrar el catálogo SAT de cuentas
+    from app.services.finance_seed import seed_sat_catalog
+    await seed_sat_catalog(db, nuevo_tenant.id)
     
     # Guardar el token con referencia al tenant
     nuevo_token = TokenVerificacion(

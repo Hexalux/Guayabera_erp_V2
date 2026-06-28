@@ -138,7 +138,7 @@ const LicensesList: React.FC = () => {
         }}
         okText="Enviar solicitud"
         cancelText="Cancelar"
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item

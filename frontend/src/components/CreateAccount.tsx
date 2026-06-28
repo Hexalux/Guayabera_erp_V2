@@ -18,7 +18,7 @@ const CreateAccount: React.FC = () => {
     setLoading(true);
     try {
       await confirmRegistration(token, values.password);
-      message.success('¡Cuenta creada exitosamente!');
+      message.success('Contraseña guardada con éxito');
       setTimeout(() => {
         navigate('/login');
       }, 2000);

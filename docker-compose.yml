@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: guayabera_user
       POSTGRES_PASSWORD: guayabera_pass_2025
     ports:
-      - "5435:5432"  # Puerto diferente al de la versión 1
+      - "5436:5432"  # Puerto diferente al de la versión 1
     volumes:
       - postgres_data_v2:/var/lib/postgresql/data
       - ./initdb:/docker-entrypoint-initdb.d  # Directorio para scripts de inicialización
@@ -74,7 +74,7 @@ services:
       dockerfile: Dockerfile.frontend
     container_name: guayabera-erp-v2-frontend
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - REACT_APP_API_URL=http://localhost:8000/api/v1
       - PORT=3000

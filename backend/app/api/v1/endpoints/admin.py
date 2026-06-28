@@ -66,6 +66,28 @@ def serialize_admin(admin: Admin) -> dict:
         "created_at": admin.created_at,
     }
 
+
+def serialize_license(
+    licencia: Licencia,
+    tenant: Optional[Tenant] = None,
+    tipo_licencia: Optional[TipoLicencia] = None,
+) -> dict:
+    return {
+        "id": licencia.id,
+        "tenant_id": licencia.tenant_id,
+        "tenant_name": tenant.name if tenant else None,
+        "tipo_licencia_id": licencia.tipo_licencia_id,
+        "tipo_licencia_nombre": tipo_licencia.nombre if tipo_licencia else None,
+        "codigo": licencia.codigo,
+        "fecha_inicio": licencia.fecha_inicio,
+        "fecha_fin": licencia.fecha_fin,
+        "activa": licencia.activa,
+        "usada": licencia.usada,
+        "notas": licencia.notas,
+        "created_at": licencia.created_at,
+        "updated_at": licencia.updated_at,
+    }
+
 def generar_token_unico(longitud: int = 32) -> str:
     """Genera un token único seguro"""
     return ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(longitud))
@@ -289,6 +311,10 @@ async def crear_tenant(
     db.add(nuevo_tenant)
     await db.commit()
     await db.refresh(nuevo_tenant)
+    
+    # Sembrar el catálogo SAT de cuentas
+    from app.services.finance_seed import seed_sat_catalog
+    await seed_sat_catalog(db, nuevo_tenant.id)
     
     return {
         "mensaje": "Tenant creado exitosamente",
@@ -704,6 +730,9 @@ async def crear_licencia(
                 detail="Tenant no encontrado"
             )
     
+    fecha_inicio = licencia_data.fecha_inicio or datetime.utcnow()
+    fecha_fin = licencia_data.fecha_fin or fecha_inicio + timedelta(days=tipo_licencia.duracion_dias)
+
     # Generar código único para la licencia
     codigo_licencia = generar_token_unico(16)
     
@@ -711,10 +740,12 @@ async def crear_licencia(
     nueva_licencia = Licencia(
         tipo_licencia_id=licencia_data.tipo_licencia_id,
         codigo=codigo_licencia,  # Usar el código generado
-        fecha_inicio=licencia_data.fecha_inicio or datetime.utcnow(),
-        fecha_fin=licencia_data.fecha_fin,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
         activa=licencia_data.activa,
-        tenant_id=licencia_data.tenant_id
+        tenant_id=licencia_data.tenant_id,
+        usada=licencia_data.usada,
+        notas=licencia_data.notas,
     )
     
     db.add(nueva_licencia)
@@ -801,11 +832,134 @@ async def listar_licencias(
     """
     Endpoint para listar todas las licencias (solo para superadmin)
     """
-    stmt = select(Licencia).offset(skip).limit(limit)
+    stmt = (
+        select(Licencia, Tenant, TipoLicencia)
+        .join(Tenant, Licencia.tenant_id == Tenant.id)
+        .join(TipoLicencia, Licencia.tipo_licencia_id == TipoLicencia.id)
+        .order_by(Licencia.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
     result = await db.execute(stmt)
-    licencias = result.scalars().all()
+    licencias = result.all()
     
-    return {"licencias": licencias}
+    return {
+        "licencias": [
+            serialize_license(licencia, tenant, tipo_licencia)
+            for licencia, tenant, tipo_licencia in licencias
+        ]
+    }
+
+
+@router.put("/licencias/{licencia_id}")
+async def actualizar_licencia(
+    licencia_id: str,
+    licencia_data: LicenciaUpdate,
+    current_admin: Admin = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Actualiza una licencia existente sin eliminar su historial.
+    """
+    stmt = select(Licencia).where(cast(Licencia.id, String) == licencia_id)
+    result = await db.execute(stmt)
+    licencia = result.scalar_one_or_none()
+
+    if not licencia:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Licencia no encontrada"
+        )
+
+    data = licencia_data.model_dump(exclude_unset=True)
+
+    if "tenant_id" in data and data["tenant_id"]:
+        stmt = select(Tenant).where(cast(Tenant.id, String) == data["tenant_id"])
+        result = await db.execute(stmt)
+        tenant = result.scalar_one_or_none()
+
+        if not tenant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tenant no encontrado"
+            )
+
+    if "tipo_licencia_id" in data and data["tipo_licencia_id"]:
+        stmt = select(TipoLicencia).where(cast(TipoLicencia.id, String) == data["tipo_licencia_id"])
+        result = await db.execute(stmt)
+        tipo_licencia = result.scalar_one_or_none()
+
+        if not tipo_licencia:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tipo de licencia no encontrado"
+            )
+
+    for field, value in data.items():
+        setattr(licencia, field, value)
+
+    await db.commit()
+    await db.refresh(licencia)
+
+    tenant = None
+    tipo_licencia = None
+
+    if licencia.tenant_id:
+        tenant_result = await db.execute(select(Tenant).where(cast(Tenant.id, String) == str(licencia.tenant_id)))
+        tenant = tenant_result.scalar_one_or_none()
+
+    if licencia.tipo_licencia_id:
+        tipo_result = await db.execute(select(TipoLicencia).where(cast(TipoLicencia.id, String) == str(licencia.tipo_licencia_id)))
+        tipo_licencia = tipo_result.scalar_one_or_none()
+
+    return {
+        "mensaje": "Licencia actualizada exitosamente",
+        "licencia": serialize_license(licencia, tenant, tipo_licencia),
+    }
+
+
+@router.put("/licencias/{licencia_id}/desactivar")
+async def desactivar_licencia(
+    licencia_id: str,
+    current_admin: Admin = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    stmt = select(Licencia).where(cast(Licencia.id, String) == licencia_id)
+    result = await db.execute(stmt)
+    licencia = result.scalar_one_or_none()
+
+    if not licencia:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Licencia no encontrada"
+        )
+
+    licencia.activa = False
+    await db.commit()
+
+    return {"mensaje": f"Licencia {licencia.codigo} desactivada exitosamente"}
+
+
+@router.put("/licencias/{licencia_id}/activar")
+async def activar_licencia(
+    licencia_id: str,
+    current_admin: Admin = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    stmt = select(Licencia).where(cast(Licencia.id, String) == licencia_id)
+    result = await db.execute(stmt)
+    licencia = result.scalar_one_or_none()
+
+    if not licencia:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Licencia no encontrada"
+        )
+
+    licencia.activa = True
+    await db.commit()
+
+    return {"mensaje": f"Licencia {licencia.codigo} activada exitosamente"}
 
 @router.get("/licencias-por-tenant/{tenant_id}")
 async def listar_licencias_por_tenant(

@@ -13,12 +13,13 @@ import {
   Popconfirm,
   Tag,
   Typography,
-  Switch
+  Switch,
+  DatePicker
 } from 'antd';
 import { CheckCircleOutlined, DeleteOutlined, EditOutlined, MailOutlined, PlusOutlined, StopOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import { api, getApiErrorMessage } from '../services/authService';
 
-const { TabPane } = Tabs;
 const { Title } = Typography;
 
 interface Tenant {
@@ -44,13 +45,16 @@ interface Corporation {
 
 interface License {
   id: string;
+  tenant_id: string;
+  tenant_name?: string;
   tipo_licencia_id: string;
   tipo_licencia_nombre?: string;
   codigo: string;
   fecha_inicio: string;
   fecha_fin: string;
   activa: boolean;
-  tenant_id?: string;
+  usada?: boolean;
+  notas?: string;
   created_at: string;
 }
 
@@ -102,6 +106,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [selectedCorporation, setSelectedCorporation] = useState<Corporation | null>(null);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [editingCorporation, setEditingCorporation] = useState<Corporation | null>(null);
+  const [editingLicense, setEditingLicense] = useState<License | null>(null);
   const [editingSuperAdmin, setEditingSuperAdmin] = useState<SuperAdminUser | null>(null);
 
   // Load data on mount
@@ -287,20 +292,70 @@ const SuperAdminDashboard: React.FC = () => {
     }
   };
 
-  const handleCreateLicense = async (values: any) => {
+  const openCreateLicenseModal = () => {
+    setEditingLicense(null);
+    licenseForm.resetFields();
+    setShowLicenseModal(true);
+  };
+
+  const openEditLicenseModal = (license: License) => {
+    setEditingLicense(license);
+    licenseForm.setFieldsValue({
+      tenant_id: license.tenant_id,
+      tipo_licencia_id: license.tipo_licencia_id,
+      fecha_inicio: license.fecha_inicio ? dayjs(license.fecha_inicio) : undefined,
+      fecha_fin: license.fecha_fin ? dayjs(license.fecha_fin) : undefined,
+      activa: license.activa,
+      usada: license.usada || false,
+      notas: license.notas,
+    });
+    setShowLicenseModal(true);
+  };
+
+  const handleSaveLicense = async (values: any) => {
     try {
-      await api.post('/licencias/licencias', {
+      const payload = {
         tenant_id: values.tenant_id,
         tipo_licencia_id: values.tipo_licencia_id,
-        notas: values.notas
-      });
+        fecha_inicio: values.fecha_inicio?.toISOString(),
+        fecha_fin: values.fecha_fin?.toISOString(),
+        activa: values.activa,
+        usada: values.usada,
+        notas: values.notas,
+      };
 
-      message.success('Licencia creada exitosamente');
+      if (editingLicense) {
+        await api.put(`/admin/licencias/${editingLicense.id}`, payload);
+      } else {
+        await api.post('/admin/crear-licencia', {
+          ...payload,
+          activa: values.activa ?? true,
+          usada: false,
+        });
+      }
+
+      message.success(`Licencia ${editingLicense ? 'actualizada' : 'creada'} exitosamente`);
       setShowLicenseModal(false);
+      setEditingLicense(null);
       licenseForm.resetFields();
       fetchData();
     } catch (error: any) {
-      message.error(getApiErrorMessage(error, 'Error al crear la licencia'));
+      message.error(getApiErrorMessage(error, `Error al ${editingLicense ? 'actualizar' : 'crear'} la licencia`));
+    }
+  };
+
+  const handleActivateDeactivateLicense = async (id: string, activate: boolean) => {
+    try {
+      const url = activate
+        ? `/admin/licencias/${id}/activar`
+        : `/admin/licencias/${id}/desactivar`;
+
+      await api.put(url);
+
+      message.success(`Licencia ${activate ? 'activada' : 'desactivada'} exitosamente`);
+      fetchData();
+    } catch (error: any) {
+      message.error(getApiErrorMessage(error, `Error al ${activate ? 'activar' : 'desactivar'} la licencia`));
     }
   };
 
@@ -599,23 +654,29 @@ const SuperAdminDashboard: React.FC = () => {
       title: 'Tenant',
       dataIndex: 'tenant_id',
       key: 'tenant_id',
-      render: (tenantId: string) => tenants.find((tenant) => tenant.id === tenantId)?.name || tenantId,
+      render: (tenantId: string, record: License) => (
+        record.tenant_name || tenants.find((tenant) => tenant.id === tenantId)?.name || tenantId
+      ),
     },
     {
       title: 'Tipo',
       dataIndex: 'tipo_licencia_id',
       key: 'tipo_licencia_id',
-      render: (tipoId: string) => licenseTypes.find((tipo) => tipo.id === tipoId)?.nombre || tipoId,
+      render: (tipoId: string, record: License) => (
+        record.tipo_licencia_nombre || licenseTypes.find((tipo) => tipo.id === tipoId)?.nombre || tipoId
+      ),
     },
     {
       title: 'Fecha Inicio',
       dataIndex: 'fecha_inicio',
       key: 'fecha_inicio',
+      render: (value: string) => value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-',
     },
     {
       title: 'Fecha Fin',
       dataIndex: 'fecha_fin',
       key: 'fecha_fin',
+      render: (value: string) => value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-',
     },
     {
       title: 'Activa',
@@ -624,6 +685,48 @@ const SuperAdminDashboard: React.FC = () => {
         <Tag color={record.activa ? 'success' : 'error'}>
           {record.activa ? 'Sí' : 'No'}
         </Tag>
+      ),
+    },
+    {
+      title: 'Usada',
+      dataIndex: 'usada',
+      key: 'usada',
+      render: (usada: boolean) => (
+        <Tag color={usada ? 'processing' : 'default'}>
+          {usada ? 'Si' : 'No'}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Notas',
+      dataIndex: 'notas',
+      key: 'notas',
+    },
+    {
+      title: 'Acciones',
+      key: 'acciones',
+      render: (record: License) => (
+        <Space>
+          <Button
+            icon={<EditOutlined />}
+            onClick={() => openEditLicenseModal(record)}
+          >
+            Editar
+          </Button>
+          <Popconfirm
+            title={record.activa ? "¿Desactivar esta licencia?" : "¿Activar esta licencia?"}
+            onConfirm={() => handleActivateDeactivateLicense(record.id, !record.activa)}
+            okText="Si"
+            cancelText="No"
+          >
+            <Button icon={record.activa ? <StopOutlined /> : <CheckCircleOutlined />}>
+              {record.activa ? 'Desactivar' : 'Activar'}
+            </Button>
+          </Popconfirm>
+          <Button danger disabled icon={<DeleteOutlined />}>
+            Borrar
+          </Button>
+        </Space>
       ),
     },
   ];
@@ -702,95 +805,109 @@ const SuperAdminDashboard: React.FC = () => {
       <Tabs 
         defaultActiveKey="tenants" 
         style={{ marginBottom: 24 }}
-      >
-        <TabPane tab="Tenants" key="tenants">
-          <Card
-            title="Gestión de Tenants"
-            extra={
-              <Button 
-                type="primary" 
-                icon={<PlusOutlined />}
-                onClick={openCreateTenantModal}
+        items={[
+          {
+            key: 'tenants',
+            label: 'Tenants',
+            children: (
+              <Card
+                title="Gestión de Tenants"
+                extra={
+                  <Button 
+                    type="primary" 
+                    icon={<PlusOutlined />}
+                    onClick={openCreateTenantModal}
+                  >
+                    Nuevo Tenant
+                  </Button>
+                }
               >
-                Nuevo Tenant
-              </Button>
-            }
-          >
-            <Table 
-              dataSource={tenants} 
-              columns={tenantColumns} 
-              rowKey="id" 
-              loading={loading}
-            />
-          </Card>
-        </TabPane>
-
-        <TabPane tab="Corporaciones" key="corporations">
-          <Card
-            title="Gestión de Corporaciones"
-            extra={
-              <Button 
-                type="primary" 
-                icon={<PlusOutlined />}
-                onClick={openCreateCorporationModal}
+                <Table 
+                  dataSource={tenants} 
+                  columns={tenantColumns} 
+                  rowKey="id" 
+                  loading={loading}
+                />
+              </Card>
+            )
+          },
+          {
+            key: 'corporations',
+            label: 'Corporaciones',
+            children: (
+              <Card
+                title="Gestión de Corporaciones"
+                extra={
+                  <Button 
+                    type="primary" 
+                    icon={<PlusOutlined />}
+                    onClick={openCreateCorporationModal}
+                  >
+                    Nueva Corporación
+                  </Button>
+                }
               >
-                Nueva Corporación
-              </Button>
-            }
-          >
-            <Table 
-              dataSource={corporations} 
-              columns={corporationColumns} 
-              rowKey="id" 
-              loading={loading}
-            />
-          </Card>
-        </TabPane>
-
-        <TabPane tab="Licencias" key="licenses">
-          <Card
-            title="Gestión de Licencias"
-            extra={
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setShowLicenseModal(true)}
+                <Table 
+                  dataSource={corporations} 
+                  columns={corporationColumns} 
+                  rowKey="id" 
+                  loading={loading}
+                />
+              </Card>
+            )
+          },
+          {
+            key: 'licenses',
+            label: 'Licencias',
+            children: (
+              <Card
+                title="Gestión de Licencias"
+                extra={
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={openCreateLicenseModal}
+                  >
+                    Nueva Licencia
+                  </Button>
+                }
               >
-                Nueva Licencia
-              </Button>
-            }
-          >
-            <Table 
-              dataSource={licenses} 
-              columns={licenseColumns} 
-              rowKey="id" 
-              loading={loading}
-            />
-          </Card>
-        </TabPane>
-
-        <TabPane tab="Super admins" key="super-admins">
-          <Card
-            title="Super administradores"
-            extra={
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={openCreateSuperAdminModal}
+                <Table 
+                  dataSource={licenses} 
+                  columns={licenseColumns} 
+                  rowKey="id" 
+                  loading={loading}
+                />
+              </Card>
+            )
+          },
+          {
+            key: 'super-admins',
+            label: 'Super admins',
+            children: (
+              <Card
+                title="Super administradores"
+                extra={
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={openCreateSuperAdminModal}
+                  >
+                    Nuevo Super Admin
+                  </Button>
+                }
               >
-                Nuevo Super Admin
-              </Button>
-            }
-          >
-            <Table
-              dataSource={superAdmins}
-              columns={superAdminColumns}
-              rowKey="id"
-              loading={loading}
-            />
-          </Card>
-        </TabPane>
-      </Tabs>
+                <Table
+                  dataSource={superAdmins}
+                  columns={superAdminColumns}
+                  rowKey="id"
+                  loading={loading}
+                />
+              </Card>
+            )
+          }
+        ]}
+      />
 
       {/* Modals */}
       <Modal
@@ -802,7 +919,7 @@ const SuperAdminDashboard: React.FC = () => {
           tenantForm.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <AntdForm
           form={tenantForm}
@@ -880,7 +997,7 @@ const SuperAdminDashboard: React.FC = () => {
           assignCorporationForm.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <AntdForm
           form={assignCorporationForm}
@@ -918,7 +1035,7 @@ const SuperAdminDashboard: React.FC = () => {
         }}
         footer={null}
         width={900}
-        destroyOnClose
+        destroyOnHidden
       >
         <Table
           dataSource={getCorporationTenants(selectedCorporation?.id)}
@@ -963,7 +1080,7 @@ const SuperAdminDashboard: React.FC = () => {
           manageCorporationTenantsForm.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <AntdForm
           form={manageCorporationTenantsForm}
@@ -1003,7 +1120,7 @@ const SuperAdminDashboard: React.FC = () => {
           corporationForm.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <AntdForm
           form={corporationForm}
@@ -1034,19 +1151,20 @@ const SuperAdminDashboard: React.FC = () => {
       </Modal>
 
       <Modal
-        title="Crear Nueva Licencia"
+        title={editingLicense ? 'Editar Licencia' : 'Crear Nueva Licencia'}
         open={showLicenseModal}
         onCancel={() => {
           setShowLicenseModal(false);
+          setEditingLicense(null);
           licenseForm.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <AntdForm
           form={licenseForm}
           layout="vertical"
-          onFinish={handleCreateLicense}
+          onFinish={handleSaveLicense}
         >
           <AntdForm.Item
             name="tenant_id"
@@ -1083,9 +1201,43 @@ const SuperAdminDashboard: React.FC = () => {
             <Input.TextArea placeholder="Notas internas de la licencia..." />
           </AntdForm.Item>
 
+          {editingLicense && (
+            <>
+              <AntdForm.Item
+                name="fecha_inicio"
+                label="Fecha de inicio"
+              >
+                <DatePicker showTime style={{ width: '100%' }} />
+              </AntdForm.Item>
+
+              <AntdForm.Item
+                name="fecha_fin"
+                label="Fecha de vencimiento"
+              >
+                <DatePicker showTime style={{ width: '100%' }} />
+              </AntdForm.Item>
+
+              <AntdForm.Item
+                name="activa"
+                label="Activa"
+                valuePropName="checked"
+              >
+                <Switch />
+              </AntdForm.Item>
+
+              <AntdForm.Item
+                name="usada"
+                label="Usada"
+                valuePropName="checked"
+              >
+                <Switch />
+              </AntdForm.Item>
+            </>
+          )}
+
           <AntdForm.Item>
             <Button type="primary" htmlType="submit" block>
-              Crear Licencia
+              {editingLicense ? 'Guardar Licencia' : 'Crear Licencia'}
             </Button>
           </AntdForm.Item>
         </AntdForm>
@@ -1100,7 +1252,7 @@ const SuperAdminDashboard: React.FC = () => {
           superAdminForm.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <AntdForm
           form={superAdminForm}
@@ -1171,7 +1323,7 @@ const SuperAdminDashboard: React.FC = () => {
           inviteForm.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <AntdForm
           form={inviteForm}

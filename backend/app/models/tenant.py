@@ -32,21 +32,6 @@ class Tenant(Base):
     subdomain: str = Column(String, unique=True, nullable=False, index=True)  # Subdominio para acceso
     schema_name: str = Column(String, unique=True, nullable=False)  # Nombre del esquema en la BD
     contact_email: str = Column(String, nullable=True)  # Email de contacto
-    contact_phone: str = Column(String, nullable=True)  # Teléfono de contacto
-    descripcion: str = Column(Text, nullable=True)  # Descripción de la empresa
-    is_active: bool = Column(Boolean, default=True)  # Si el tenant está activo
-    created_at: datetime = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at: datetime = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
-
-    # Campos para la funcionalidad de grupos corporativos
-    es_grupo_corporativo: bool = Column(Boolean, default=False)  # Indica si este tenant es un grupo corporativo
-    grupo_corporativo_id: str = Column(String, nullable=True)  # ID del grupo corporativo al que pertenece (si aplica)
-    
-    # Información de contacto opcional
-    contact_email: str = Column(String, nullable=True)
-    contact_phone: str = Column(String, nullable=True)
-    
-    # Información adicional
     descripcion: str = Column(Text, nullable=True)
     
     # Relación con usuarios
